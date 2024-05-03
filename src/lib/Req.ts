@@ -3,7 +3,7 @@ import { StrObj } from '@/types';
 export default class Req {
   method: string;
   path: string;
-  httpVersion: string;
+  httpVersion: number;
   headers: StrObj; 
   body?: string;
 
@@ -16,7 +16,7 @@ export default class Req {
     this.body = body || undefined;
     this.method = method;
     this.path = path;
-    this.httpVersion = httpVersion;
+    this.httpVersion = Number(httpVersion.match(/\d+\.\d+$/)![0]);
     this.headers = headers.reduce((headers, line) => {
       // If line starts with some combination of tabs and spaces, then this value belongs to the previous key, 
       if (line.match(/^[\t ]+/)) {
