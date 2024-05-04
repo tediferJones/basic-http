@@ -1,60 +1,36 @@
-import { BunFile, MatchedRoute } from 'bun';
-// import { StrObj } from '@/types';
 import Req from '@/lib/Req';
+import { ResBody } from '@/types';
 
 export default class Res {
-  // httpVersion: string;
-  status: number;
-  // reason: string;
-  // headers: StrObj;
-  body?: BunFile;
   req: Req;
+  body?: ResBody;
 
-  constructor(req: Req, match: MatchedRoute | null) {
-    const File = match ? Bun.file(match?.filePath) : undefined;
-    const exists = File && File.exists();
+  constructor(req: Req, body?: ResBody) {
     this.req = req;
-    // this.httpVersion = 'HTTP/1.1';
-    // this.status = exists ? 200 : 404;
-    // this.reason = exists ? 'OK' : 'Not Found';
-    this.body = exists ? File : undefined;
-    this.status = this.getStatusCode();
-    // this.headers = {
-    //   'content-type': exists ? File.type : 'text/plain',
-    //   'content-length': exists ? File.size.toString() : '0',
-    // }
+    this.body = body;
   }
 
   getStatusCode() {
-    const req = this.req;
-    if (!this.body) return 404;
-
-    if (!['GET', 'HEAD'].includes(req.method)) {
-      return 501
+    const conditions: { [key: string]: (req: Req) => boolean } = {
+      404: (req) => req.method !== 'HEAD' && !this.body?.body,
+      501: (req) => !['GET', 'HEAD', 'POST', 'PUT', 'DELETE'].includes(req.method),
+      400: (req) => (
+        (req.httpVersion === 1.1 && !req.headers.host) ||
+          (req.httpVersion > 1.1 && (!req.headers.host && !req.path.match(/https?:\/\//)))
+      ),
     }
-
-    if (req.httpVersion > 1) {
-      if (req.httpVersion === 1.1 && !req.headers.host) {
-        console.log('is 1.1 and no host header')
-        return 400;
-      }
-      if (req.httpVersion > 1.1 && (!req.headers.host && !req.path.match(/https?:\/\//))) {
-        console.log('is greater than 1.1 and no host header or no absolute path')
-        return 400;
-      }
-    }
-
-    return 200;
+    
+    return Number(
+      Object.keys(conditions)
+        .find(statusCode => conditions[statusCode](this.req))
+    ) || 200;
   }
 
   // This returns a string that ends in \r\n
   getHeaders() {
-    // return Object.keys(this.headers).reduce((headers, key) => {
-    //   return headers + `${key}: ${this.headers[key]}\r\n`
-    // }, '')
     const headerObj: { [key: string]: string | number | undefined} = {
-      'content-type': this.body?.type || 'text/plain',
-      'content-length': this.body?.size || 0,
+      'content-type': this.body?.type || undefined,
+      'content-length': this.body?.size || undefined,
       'date': new Date().toUTCString(),
       'connection': 'close',
     }
@@ -65,7 +41,7 @@ export default class Res {
   }
 
   sendBody() {
-    return !!(this.body && this.status === 200 && this.req.method !== 'HEAD')
+    return !!(this.body && this.getStatusCode() === 200 && this.req.method !== 'HEAD')
   }
 
   getStatusLine() {
@@ -85,9 +61,8 @@ export default class Res {
 
   async getBytes() {
     return Buffer.concat([
-      // Buffer.from(`HTTP/1.0 ${this.status} ${this.getReason()}\r\n${this.getHeaders()}\r\n`),
       Buffer.from(`${this.getStatusLine()}\r\n${this.getHeaders()}\r\n`),
-      Buffer.from(this.sendBody() ? await this.body!.arrayBuffer() : new ArrayBuffer(0)),
+      Buffer.from(this.body?.body || ''),
     ])
   }
 }

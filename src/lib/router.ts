@@ -1,7 +1,6 @@
 const router = new Bun.FileSystemRouter({
-  dir: './src/public',
   style: 'nextjs',
-  fileExtensions: ['.js', '.css', '.ico', '.html'],
+  dir: './src/routes',
 });
 
 export default router;

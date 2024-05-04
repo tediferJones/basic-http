@@ -8,10 +8,6 @@
 // Curl Example:
 // curl -i http://localhost:3000 -X POST -H 'content-type: text/plain' -d 'Request body goes here' -w '\n'
 //
-// NOTES:
-// We probably want to be able to handle the following methods: GET, POST, PUT, DELETE, HEAD
-//  - As of now every request is essentially treated as a GET request
-//
 // HTTP 1.1 Requirements:
 // Requests MUST include either a 'host' header or an absolute URL in the request line
 //  - [ DONE ] Read over sections Requiring Host Header and Accepting Absolute URLs
@@ -52,7 +48,8 @@
 //  - Be backwards compatible with HTTP/1.0
 //    - [ DONE ] Dont require Host header
 //    - Dont send '100 Continue' Responses
-
+//
+// We probably want to create some kind of wrapper function to auto assign content-length and content-type
 
 import Req from '@/lib/Req';
 import Res from '@/lib/Res';
@@ -64,12 +61,15 @@ Bun.listen({
   port: 3000,
   socket: {
     async data(socket, data) {
-      const req = new Req(data.toString())
-      const match = router.match(req.path)
-      console.log(req.path, '->', match?.filePath);
-      socket.end(
-        await new Res(req, match).getBytes()
-      )
+      const req = new Req(data.toString());
+      const method = req.method === 'HEAD' ? 'GET' : req.method;
+      const res = new Res(req);
+
+      const matchV2 = router.match(req.path);
+      const route = matchV2 ? (await import(matchV2.filePath))[method] : undefined;
+      if (route) await route(req, res);
+
+      socket.end(await res.getBytes())
     },
   }
 })

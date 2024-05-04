@@ -1,5 +1,12 @@
 type StrObj = { [key: string]: string }
 
-export {
-  StrObj
+type ResBody = {
+  body: string | Buffer
+  size: number,
+  type: string,
+}
+
+export type {
+  StrObj,
+  ResBody,
 }
