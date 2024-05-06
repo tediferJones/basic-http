@@ -1,9 +1,10 @@
 type StrObj = { [key: string]: string }
 
 type ResBody = {
-  body: string | Buffer
+  body: Buffer,
   size: number,
   type: string,
+  lastModified: number,
 }
 
 export type {

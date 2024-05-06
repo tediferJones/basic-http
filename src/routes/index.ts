@@ -3,14 +3,9 @@ import Res from '@/lib/Res';
 import getFileBody from '@/lib/getFileBody';
 
 export async function GET(req: Req, res: Res) {
-  res.body = await getFileBody('./src/public/index.html')
+  res.body = await getFileBody(Bun.file('./src/public/index.html'));
 }
 
 export async function POST(req: Req, res: Res) {
-  const body = Buffer.from('POST response from routes/index.ts')
-  res.body = {
-    body,
-    size: body.byteLength,
-    type: 'text/plain'
-  }
+  res.body = await getFileBody('POST response from routes/index.ts', 'application/json')
 }

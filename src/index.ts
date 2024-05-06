@@ -24,32 +24,37 @@
 //        - [ DONE ] Every response should include the header 'connection: close' on every response
 //  - Implement '100 Continue' response
 //    - I think this is only used for chunked requests, but double check that
+//    - According to this (https://www.w3.org/Protocols/rfc2616/rfc2616-sec8.html#sec8.2.3)
+//      we should only send '100 Continue' res if the req has the header 'Expect: 100-continue'
 //    - Don't send '100 Continue' responses to any client using HTTP/1.0
 //  - [ DONE ] Add date header to all responses, should look like this:
 //      [ DONE ] Date: Fri, 31 Dec 1999 23:59:59 GMT
 //      - [ DONE ] Reminder to be tolerant of non-GMT timezones (i.e. convert them to GMT)
-//  - Respect If-Modified-Since and If-Unmodified-Since headers
-//    - If-Modified-Since means 'Only send the resource if the file has been modified after given date'
-//      - If the resource has not been modified since the given date, return '304 Not Modified' with a 'date' header
-//      - This head is only used with GET requests
-//    - If-Unmodified-Since means 'If the resource has NOT been modified since the given date, return the resource'
-//      - If it has been modified since the given date, return '412 Precondition Failed'
-//      - This header can be used with any method, including GET
-//    - Dates for these headers can be sent in any of these formats
-//        If-Modified-Since:  Fri, 31 Dec 1999 23:59:59 GMT
-//        If-Modified-Since:  Friday, 31-Dec-99 23:59:59 GMT
-//        If-Modified-Since:  Fri Dec 31 23:59:59 1999
-//    - Reminder to be tolerant of non-GMT timezones (i.e. convert them to GMT)
-//    - If date has a 2 digit year that seems to be more than 50 years in the future, treat it as tho it is from the past
-//      - This rule should apply to all uses of date with HTTP/1.1
-//    - If date is invalid or in the future, just ignore the header
+//  - [ DONE ] Respect If-Modified-Since and If-Unmodified-Since headers
+//    - [ DONE ] If-Modified-Since means 'Only send the resource if the file has been modified after given date'
+//      - [ DONE ] If the resource has not been modified since the given date, return '304 Not Modified' with a 'date' header
+//      - [ DONE ] This header is only used with GET requests
+//    - [ DONE ] If-Unmodified-Since means 'If the resource has NOT been modified since the given date, return the resource'
+//      - [ DONE ] If it has been modified since the given date, return '412 Precondition Failed'
+//      - [ DONE ] This header can be used with any method, including GET
+//    - [ DONE ] Dates for these headers can be sent in any of these formats
+//        [ DONE ] If-Modified-Since:  Fri, 31 Dec 1999 23:59:59 GMT
+//        [ DONE ] If-Modified-Since:  Friday, 31-Dec-99 23:59:59 GMT
+//        [ DONE ] If-Modified-Since:  Fri Dec 31 23:59:59 1999
+//    - [ DONE ] Reminder to be tolerant of non-GMT timezones (i.e. convert them to GMT)
+//      - [ DONE ] new Date().getTime() is UNIX time which is in UTC which is the same as GMT
+//    - [ DONE ] If date has a 2 digit year that seems to be more than 50 years in the future, treat it as tho it is from the past
+//      - [ DONE ] This rule should apply to all uses of date with HTTP/1.1
+//      - [ DONE ] THIS IS AUTOMAGICALLY TAKEN CARE OF BY CALLING new Date(dateStr)
+//    - [ DONE ] If date is invalid or in the future, just ignore the header
 //  - [ DONE ] Needs to support GET and HEAD methods
 //    - [ DONE ] If request uses an unsupported method, return '501 Not Implemented' response
 //  - Be backwards compatible with HTTP/1.0
 //    - [ DONE ] Dont require Host header
 //    - Dont send '100 Continue' Responses
 //
-// We probably want to create some kind of wrapper function to auto assign content-length and content-type
+// Rename getFileBody func to getResBody
+// Should be able to assign custom headers to res using res.headers
 
 import Req from '@/lib/Req';
 import Res from '@/lib/Res';

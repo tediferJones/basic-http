@@ -1,8 +1,13 @@
-export default async function getFileBody(path: string) {
-  const File = Bun.file(path)
+import { ResBody } from '@/types';
+import { BunFile } from 'bun';
+
+export default async function getFileBody(content: string | BunFile, type?: string): Promise<ResBody> {
+  const isStr = typeof(content) === 'string';
+  const buf = isStr ? Buffer.from(content) : Buffer.from(await content.arrayBuffer());
   return {
-    body: Buffer.from(await File.arrayBuffer()),
-    size: File.size,
-    type: File.type,
+    body: buf,
+    size: buf.byteLength,
+    type: type || (isStr ? 'text/plain' : content.type),
+    lastModified: isStr ? Date.now() : content.lastModified,
   }
 }

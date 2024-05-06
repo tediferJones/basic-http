@@ -1,6 +1,11 @@
 import Req from '@/lib/Req';
 import { ResBody } from '@/types';
 
+function dateHandler(dateStr: string) {
+  if (!dateStr.match(/\s+[A-Za-z]+$/)) dateStr += ' GMT'
+  return new Date(dateStr).getTime();
+}
+
 export default class Res {
   req: Req;
   body?: ResBody;
@@ -18,6 +23,22 @@ export default class Res {
         (req.httpVersion === 1.1 && !req.headers.host) ||
           (req.httpVersion > 1.1 && (!req.headers.host && !req.path.match(/https?:\/\//)))
       ),
+      304: (req) => {
+        // Only send the resource if the file has been modified since given date
+        const modSince = req.headers['if-modified-since'];
+        if (!modSince || this.req.method !== 'GET') return false;
+        const modSinceDate = dateHandler(modSince);
+        if (isNaN(modSinceDate) || Date.now() < modSinceDate) return false;
+        return (this.body?.lastModified || NaN) < modSinceDate;
+      },
+      412: (req) => {
+        // Only send the resource if the file NOT been modified since given date
+        const notModSince = req.headers['if-unmodified-since'];
+        if (!notModSince) return false;
+        const notModSinceDate = dateHandler(notModSince)
+        if (isNaN(notModSinceDate) || Date.now() < notModSinceDate) return false;
+        return (this.body?.lastModified || NaN) > notModSinceDate;
+      }
     }
     
     return Number(
@@ -62,7 +83,7 @@ export default class Res {
   async getBytes() {
     return Buffer.concat([
       Buffer.from(`${this.getStatusLine()}\r\n${this.getHeaders()}\r\n`),
-      Buffer.from(this.body?.body || ''),
+      Buffer.from((this.body?.body && this.sendBody()) ? this.body.body : ''),
     ])
   }
 }

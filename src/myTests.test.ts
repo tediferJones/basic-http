@@ -93,3 +93,43 @@ test('Non existent route', async () => {
   expect(res.getHeaders().includes('content-length: ')).toBe(false)
   expect(res.sendBody()).toBe(false)
 })
+
+test('Respects all formats of if-modified-since header', async () => {
+  // Test dates in the past
+  await Promise.all(
+    [
+      'Fri, 31 Dec 1999 23:59:59 GMT',
+      'Friday, 31-Dec-99 23:59:59 GMT',
+      'Fri Dec 31 23:59:59 1999'
+    ].map(async dateStr => {
+        const res = await getRes({ headers: { 'If-Modified-Since': dateStr } })
+        expect(res.getStatusCode()).toBe(200)
+        expect(res.sendBody()).toBe(true)
+      })
+  )
+
+  // Test current date
+  const res = await getRes({ headers: { 'If-Modified-Since': new Date().toString() } })
+  expect(res.getStatusCode()).toBe(304)
+  expect(res.sendBody()).toBe(false)
+})
+
+test('Respects all formats of if-unmodified-since header', async () => {
+  // Test dates in the past
+  await Promise.all(
+    [
+      'Fri, 31 Dec 1999 23:59:59 GMT',
+      'Friday, 31-Dec-99 23:59:59 GMT',
+      'Fri Dec 31 23:59:59 1999'
+    ].map(async dateStr => {
+        const res = await getRes({ headers: { 'If-Unmodified-Since': dateStr } })
+        expect(res.getStatusCode()).toBe(412)
+        expect(res.sendBody()).toBe(false)
+      })
+  )
+
+  // Test current date
+  const res = await getRes({ headers: { 'If-Unmodified-Since': new Date().toString() } })
+  expect(res.getStatusCode()).toBe(200);
+  expect(res.sendBody()).toBe(true);
+})
