@@ -4,19 +4,27 @@ import Res from '@/lib/Res';
 import router from '@/lib/router';
 import { StrObj } from '@/types';
 
-async function getRes({ method, path, httpVersion, headers }: {
+async function getRes({ method, path, httpVersion, headers, body }: {
   method?: string,
   path?: string,
   httpVersion?: string,
   headers?: StrObj,
+  body?: string,
 }) {
   const matchV2 = router.match(path || '/')
-  const req = new Req(`\
-${method || 'GET'} ${path || '/'} ${httpVersion || 'HTTP/1.0'}\
-\r\n\
-${Object.keys(headers || {}).reduce(
-(str, key) => str + `${key}: ${headers?.[key]}`
-, '')}`);
+//   const req = new Req(`\
+// ${method || 'GET'} ${path || '/'} ${httpVersion || 'HTTP/1.0'}\
+// \r\n\
+// ${Object.keys(headers || {}).reduce(
+// (str, key) => str + `${key}: ${headers?.[key]}`
+// , '')}`);
+  const reqHeaders = Object.keys(headers || {}).reduce((str, key) => {
+    return str + `${key}: ${headers?.[key]}\r\n`
+  }, '')
+  const req = new Req(
+    `${method || 'GET'} ${path || '/'} ${httpVersion || 'HTTP/1.0'}\r\n` +
+      `${reqHeaders}\r\n${body}`
+  )
   const res = new Res(req);
   const methodV2 = req.method === 'HEAD' ? 'GET' : req.method;
   const route = matchV2 ? (await import(matchV2.filePath))[methodV2] : undefined;
@@ -132,4 +140,44 @@ test('Respects all formats of if-unmodified-since header', async () => {
   const res = await getRes({ headers: { 'If-Unmodified-Since': new Date().toString() } })
   expect(res.getStatusCode()).toBe(200);
   expect(res.sendBody()).toBe(true);
+})
+
+test('Accepts chunked requests', async () => {
+  const res = await getRes({
+    headers: { 'Transfer-Encoding': 'chunked' },
+    body: (
+      '1a; ignore-stuff-here\r\n' +
+        'abcdefghijklmnopqrstuvwxyz\r\n' +
+        '10\r\n' +
+        '1234567890abcdef\r\n' +
+        '0\r\n' +
+        'some-footer: some-value\r\n' + 
+        'another-footer: another-value\r\n' + 
+        '\r\n'
+    )
+  })
+
+  expect(res.req.headers['some-footer']).toBe('some-value')
+  expect(res.req.headers['another-footer']).toBe('another-value')
+  expect(res.req.headers['content-length']).toBe('42')
+  expect(res.req.body).toBe('abcdefghijklmnopqrstuvwxyz1234567890abcdef')
+})
+
+test('Respects 100-continue header', async () => {
+  const res = await getRes({
+    headers: { 'Expect': '100-continue' }
+  })
+  expect(res.getStatusCode()).toBe(200)
+
+  const resV2 = await getRes({
+    headers: { 'Expect': '100-continue' },
+    httpVersion: 'HTTP/1.1',
+  })
+  expect(resV2.getStatusCode()).toBe(100)
+})
+
+test('Add headers to response', async () => {
+  const res = await getRes({});
+  res.headers = { 'test-header': 'test-value' }
+  expect(res.getHeaders().includes('test-header: test-value')).toBe(true)
 })

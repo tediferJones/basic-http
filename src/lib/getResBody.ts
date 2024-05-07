@@ -1,7 +1,7 @@
 import { ResBody } from '@/types';
 import { BunFile } from 'bun';
 
-export default async function getFileBody(content: string | BunFile, type?: string): Promise<ResBody> {
+export default async function getResBody(content: string | BunFile, type?: string): Promise<ResBody> {
   const isStr = typeof(content) === 'string';
   const buf = isStr ? Buffer.from(content) : Buffer.from(await content.arrayBuffer());
   return {

@@ -1,14 +1,27 @@
 import Req from '@/lib/Req';
-import { ResBody } from '@/types';
+import { ResBody, StrObj } from '@/types';
+
+type HeaderObj = {
+  [key: string]: string | number | undefined
+}
 
 function dateHandler(dateStr: string) {
   if (!dateStr.match(/\s+[A-Za-z]+$/)) dateStr += ' GMT'
   return new Date(dateStr).getTime();
 }
 
+function toStr(obj?: HeaderObj) {
+  if (!obj) return '';
+  return Object.keys(obj).reduce((headers, key) => {
+    return !obj[key] ? headers :
+      headers + `${key}: ${obj[key]}\r\n`
+  }, '')
+}
+
 export default class Res {
   req: Req;
   body?: ResBody;
+  headers?: StrObj;
 
   constructor(req: Req, body?: ResBody) {
     this.req = req;
@@ -21,7 +34,7 @@ export default class Res {
       501: (req) => !['GET', 'HEAD', 'POST', 'PUT', 'DELETE'].includes(req.method),
       400: (req) => (
         (req.httpVersion === 1.1 && !req.headers.host) ||
-          (req.httpVersion > 1.1 && (!req.headers.host && !req.path.match(/https?:\/\//)))
+          (req.httpVersion > 1.1 && (!req.headers.host && !req.path.match(/^https?:\/\//)))
       ),
       304: (req) => {
         // Only send the resource if the file has been modified since given date
@@ -38,7 +51,8 @@ export default class Res {
         const notModSinceDate = dateHandler(notModSince)
         if (isNaN(notModSinceDate) || Date.now() < notModSinceDate) return false;
         return (this.body?.lastModified || NaN) > notModSinceDate;
-      }
+      },
+      100: (req) => req.httpVersion > 1 && req.headers['expect'] === '100-continue',
     }
     
     return Number(
@@ -49,16 +63,17 @@ export default class Res {
 
   // This returns a string that ends in \r\n
   getHeaders() {
-    const headerObj: { [key: string]: string | number | undefined} = {
+    const headerObj: HeaderObj = {
       'content-type': this.body?.type || undefined,
       'content-length': this.body?.size || undefined,
       'date': new Date().toUTCString(),
       'connection': 'close',
     }
-    return Object.keys(headerObj).reduce((headers, key) => {
-      return !headerObj[key] ? headers :
-        headers + `${key}: ${headerObj[key]}\r\n`
-    }, '')
+    // return Object.keys(headerObj).reduce((headers, key) => {
+    //   return !headerObj[key] ? headers :
+    //     headers + `${key}: ${headerObj[key]}\r\n`
+    // }, '')
+    return toStr(headerObj) + toStr(this.headers)
   }
 
   sendBody() {

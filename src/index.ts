@@ -13,7 +13,7 @@
 //  - [ DONE ] Read over sections Requiring Host Header and Accepting Absolute URLs
 //    - [ DONE ] If request is HTTP/1.1, it MUST include a 'host' header, otherwise return a '400 Bad Request' response
 //    - [ DONE ] If request use HTTP version greater than 1.1, it must have either an absolute URL in request line or a host header
-//  - Needs to be able to recieve chunked requests
+//  - [ DONE ] Needs to be able to recieve chunked requests
 //  - Do we want to use persistent connections?
 //      If Yes:
 //        - Requests need to be processed in the same order they are recieved
@@ -22,11 +22,10 @@
 //        - Close idle sockets, i.e. after 10 seconds of inactivity
 //      Else: 
 //        - [ DONE ] Every response should include the header 'connection: close' on every response
-//  - Implement '100 Continue' response
-//    - I think this is only used for chunked requests, but double check that
-//    - According to this (https://www.w3.org/Protocols/rfc2616/rfc2616-sec8.html#sec8.2.3)
-//      we should only send '100 Continue' res if the req has the header 'Expect: 100-continue'
-//    - Don't send '100 Continue' responses to any client using HTTP/1.0
+//  - [ DONE ] Implement '100 Continue' response
+//    - [ DONE ] According to this (https://www.w3.org/Protocols/rfc2616/rfc2616-sec8.html#sec8.2.3)
+//      [ DONE ] we should only send '100 Continue' res if the req has the header 'Expect: 100-continue'
+//    - [ DONE ] Don't send '100 Continue' responses to any client using HTTP/1.0
 //  - [ DONE ] Add date header to all responses, should look like this:
 //      [ DONE ] Date: Fri, 31 Dec 1999 23:59:59 GMT
 //      - [ DONE ] Reminder to be tolerant of non-GMT timezones (i.e. convert them to GMT)
@@ -49,12 +48,13 @@
 //    - [ DONE ] If date is invalid or in the future, just ignore the header
 //  - [ DONE ] Needs to support GET and HEAD methods
 //    - [ DONE ] If request uses an unsupported method, return '501 Not Implemented' response
-//  - Be backwards compatible with HTTP/1.0
+//  - [ DONE ] Be backwards compatible with HTTP/1.0
 //    - [ DONE ] Dont require Host header
-//    - Dont send '100 Continue' Responses
+//    - [ DONE ] Dont send '100 Continue' Responses
 //
-// Rename getFileBody func to getResBody
-// Should be able to assign custom headers to res using res.headers
+// [ DONE ] Rename getFileBody func to getResBody
+// [ DONE ] Should be able to assign custom headers to res using res.headers
+// [ DONE ] Add method to req class to get cookies as a StrObj
 
 import Req from '@/lib/Req';
 import Res from '@/lib/Res';
@@ -69,6 +69,8 @@ Bun.listen({
       const req = new Req(data.toString());
       const method = req.method === 'HEAD' ? 'GET' : req.method;
       const res = new Res(req);
+      console.log(req)
+      console.log(req.getCookies())
 
       const matchV2 = router.match(req.path);
       const route = matchV2 ? (await import(matchV2.filePath))[method] : undefined;

@@ -13,7 +13,6 @@ export default class Req {
     const [ method, path, httpVersion ] = reqLine.split(/[ \t]+/);
     let currentKey: string;
 
-    this.body = body || undefined;
     this.method = method;
     this.path = path;
     this.httpVersion = Number(httpVersion.match(/\d+\.\d+$/)![0]);
@@ -28,5 +27,37 @@ export default class Req {
       }
       return headers
     }, {} as StrObj);
+
+    if (this.headers['transfer-encoding'] === 'chunked') {
+      let length = 0;
+      let doneWithChunks = false;
+      let fullBody = '';
+      const split = body.split(/\r?\n/).filter(line => line);
+      split.forEach((line, i) => {
+        if (doneWithChunks) {
+          const [key, value] = line.split(/:\s+/);
+          return this.headers[key] = value;
+        }
+
+        if (line === '0') return doneWithChunks = true;
+        const isBody = Boolean(i % 2);
+        if (isBody) return fullBody += line;
+
+        const [ lineLength ] = line.split(';');
+        return length += Number('0x' + lineLength);
+      })
+      this.headers['content-length'] = length.toString();
+      this.body = fullBody;
+    } else {
+      this.body = body || undefined;
+    }
+  }
+
+  getCookies() {
+    return this.headers.cookie?.split(/; /).reduce((obj, cookie) => {
+      const [key, val] = cookie.split('=');
+      obj[key] = val;
+      return obj
+    }, {} as StrObj)
   }
 }

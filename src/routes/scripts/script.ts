@@ -1,7 +1,7 @@
 import Req from '@/lib/Req';
 import Res from '@/lib/Res';
-import getFileBody from '@/lib/getFileBody';
+import getResBody from '@/lib/getResBody';
 
 export async function GET(req: Req, res: Res) {
-  res.body = await getFileBody(Bun.file('./src/public/scripts/script.js'))
+  res.body = await getResBody(Bun.file('./src/public/scripts/script.js'))
 }

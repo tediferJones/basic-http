@@ -1,11 +1,11 @@
 import Req from '@/lib/Req';
 import Res from '@/lib/Res';
-import getFileBody from '@/lib/getFileBody';
+import getResBody from '@/lib/getResBody';
 
 export async function GET(req: Req, res: Res) {
-  res.body = await getFileBody(Bun.file('./src/public/index.html'));
+  res.body = await getResBody(Bun.file('./src/public/index.html'));
 }
 
 export async function POST(req: Req, res: Res) {
-  res.body = await getFileBody('POST response from routes/index.ts', 'application/json')
+  res.body = await getResBody('POST response from routes/index.ts', 'application/json')
 }
