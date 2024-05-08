@@ -1,36 +1,25 @@
 import Req from '@/lib/Req';
-import { ResBody, StrObj } from '@/types';
-
-type HeaderObj = {
-  [key: string]: string | number | undefined
-}
-
-function dateHandler(dateStr: string) {
-  if (!dateStr.match(/\s+[A-Za-z]+$/)) dateStr += ' GMT'
-  return new Date(dateStr).getTime();
-}
-
-function toStr(obj?: HeaderObj) {
-  if (!obj) return '';
-  return Object.keys(obj).reduce((headers, key) => {
-    return !obj[key] ? headers :
-      headers + `${key}: ${obj[key]}\r\n`
-  }, '')
-}
+import { HeaderObj, ResBody, StrObj } from '@/types';
 
 export default class Res {
   req: Req;
+  routeExists: boolean;
   body?: ResBody;
   headers?: StrObj;
 
-  constructor(req: Req, body?: ResBody) {
+  constructor(req: Req, routeExists: boolean) {
     this.req = req;
-    this.body = body;
+    this.routeExists = routeExists;
   }
 
   getStatusCode() {
+    function dateHandler(dateStr: string) {
+      if (!dateStr.match(/\s+[A-Za-z]+$/)) dateStr += ' GMT'
+      return new Date(dateStr).getTime();
+    }
+
     const conditions: { [key: string]: (req: Req) => boolean } = {
-      404: (req) => req.method !== 'HEAD' && !this.body?.body,
+      404: () => !this.routeExists,
       501: (req) => !['GET', 'HEAD', 'POST', 'PUT', 'DELETE'].includes(req.method),
       400: (req) => (
         (req.httpVersion === 1.1 && !req.headers.host) ||
@@ -42,8 +31,7 @@ export default class Res {
         if (!modSince || this.req.method !== 'GET') return false;
         const modSinceDate = dateHandler(modSince);
         if (isNaN(modSinceDate) || Date.now() < modSinceDate) return false;
-        return (this.body?.lastModified || NaN) < modSinceDate;
-      },
+        return (this.body?.lastModified || NaN) < modSinceDate; },
       412: (req) => {
         // Only send the resource if the file NOT been modified since given date
         const notModSince = req.headers['if-unmodified-since'];
@@ -63,21 +51,25 @@ export default class Res {
 
   // This returns a string that ends in \r\n
   getHeaders() {
+    function toStr(obj?: HeaderObj) {
+      if (!obj) return '';
+      return Object.keys(obj).reduce((headers, key) => {
+        return !obj[key] ? headers : headers + `${key}: ${obj[key]}\r\n`
+      }, '')
+    }
+
     const headerObj: HeaderObj = {
       'content-type': this.body?.type || undefined,
       'content-length': this.body?.size || undefined,
       'date': new Date().toUTCString(),
       'connection': 'close',
     }
-    // return Object.keys(headerObj).reduce((headers, key) => {
-    //   return !headerObj[key] ? headers :
-    //     headers + `${key}: ${headerObj[key]}\r\n`
-    // }, '')
-    return toStr(headerObj) + toStr(this.headers)
+
+    return toStr(headerObj) + toStr(this.headers);
   }
 
   sendBody() {
-    return !!(this.body && this.getStatusCode() === 200 && this.req.method !== 'HEAD')
+    return !!(this.body && this.getStatusCode() === 200 && this.req.method !== 'HEAD');
   }
 
   getStatusLine() {
@@ -95,10 +87,10 @@ export default class Res {
     return `HTTP/1.1 ${status} ${reason}`;
   }
 
-  async getBytes() {
+  getBytes() {
     return Buffer.concat([
       Buffer.from(`${this.getStatusLine()}\r\n${this.getHeaders()}\r\n`),
-      Buffer.from((this.body?.body && this.sendBody()) ? this.body.body : ''),
+      Buffer.from((this.body?.content && this.sendBody()) ? this.body.content : ''),
     ])
   }
 }

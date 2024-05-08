@@ -11,13 +11,7 @@ async function getRes({ method, path, httpVersion, headers, body }: {
   headers?: StrObj,
   body?: string,
 }) {
-  const matchV2 = router.match(path || '/')
-//   const req = new Req(`\
-// ${method || 'GET'} ${path || '/'} ${httpVersion || 'HTTP/1.0'}\
-// \r\n\
-// ${Object.keys(headers || {}).reduce(
-// (str, key) => str + `${key}: ${headers?.[key]}`
-// , '')}`);
+  const match = router.match(path || '/')
   const reqHeaders = Object.keys(headers || {}).reduce((str, key) => {
     return str + `${key}: ${headers?.[key]}\r\n`
   }, '')
@@ -25,9 +19,9 @@ async function getRes({ method, path, httpVersion, headers, body }: {
     `${method || 'GET'} ${path || '/'} ${httpVersion || 'HTTP/1.0'}\r\n` +
       `${reqHeaders}\r\n${body}`
   )
-  const res = new Res(req);
   const methodV2 = req.method === 'HEAD' ? 'GET' : req.method;
-  const route = matchV2 ? (await import(matchV2.filePath))[methodV2] : undefined;
+  const route = match ? (await import(match.filePath))[methodV2] : undefined;
+  const res = new Res(req, !!route);
   if (route) await route(req, res);
   return res;
 }
@@ -36,7 +30,7 @@ test('HTTP/1.0 GET with no headers', async () => {
   const res = await getRes({ httpVersion: 'HTTP/1.0' })
   
   expect(res.getStatusCode()).toBe(200)
-  expect(!!res.body?.body).toBeTrue()
+  expect(!!res.body?.content).toBeTrue()
   expect(res.sendBody()).toBe(true)
 
   expect(res.getHeaders().includes('date: ')).toBe(true)
